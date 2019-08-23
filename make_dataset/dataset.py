@@ -1,9 +1,9 @@
 import click
 import numpy as np
 import dask.dataframe as dd
-from dask_ml.preprocessing import OneHotEncoder
 from distributed import Client
 from pathlib import Path
+from scipy import sparse
 
 def _save_dataset(df, name, outdir: Path):
     out_path = outdir / name
@@ -28,7 +28,7 @@ def make_features(df):
 
 def make_groups(df):
     def points2group(score):
-        splits = [85, 90, 95]
+        splits = [84, 89, 95]
         for (index, split) in enumerate(splits):
             if score < split:
                 return index

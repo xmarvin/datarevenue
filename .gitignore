@@ -15,3 +15,5 @@ __pycache__/
 **/.ipynb_checkpoints
 # any data
 data_root/**
+*.dirlock
+*.lock

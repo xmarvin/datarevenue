@@ -30,7 +30,7 @@ def train(train_path, model_path):
 
   df = dd.read_parquet(train_path)
   train_x, train_y = utils.preprocess(df)
-  bst = dask_xgboost.train(client, params, train_x, train_y, num_boost_round=10)
+  bst = dask_xgboost.train(client, params, train_x, train_y, num_boost_round=50)
   bst.save_model(model_path)
 
 if __name__ == '__main__':
