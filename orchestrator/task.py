@@ -80,3 +80,59 @@ class MakeDatasets(DockerTask):
         return luigi.LocalTarget(
             path=str(out_dir / '.SUCCESS')
         )
+
+class TrainModel(DockerTask):
+    train_path = luigi.Parameter(default='/usr/share/data/make_dataset/train.parquet')
+    out_dir = luigi.Parameter(default='/usr/share/data/train_model/')
+
+    @property
+    def image(self):
+        return f'code-challenge/model:{VERSION}'
+
+    def requires(self):
+        return MakeDatasets()
+
+    def result_path(self):
+        return str(f'{self.out_dir}/xgb.model')
+
+    @property
+    def command(self):
+        return [
+            'python', 'train.py',
+            '--train-path', self.train_path,
+            '--model-path', self.result_path()
+        ]
+
+    def output(self):
+        out_dir = Path(self.out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return luigi.LocalTarget(
+            path=self.result_path()
+        )
+
+class EvaluateModel(DockerTask):
+    eval_path = luigi.Parameter(default='/usr/share/data/make_dataset/test.parquet')
+    out_dir = luigi.Parameter(default='/usr/share/data/eval_model/')
+
+    @property
+    def image(self):
+        return f'code-challenge/model:{VERSION}'
+
+    def requires(self):
+        return TrainModel()
+
+    @property
+    def command(self):
+        return [
+            'python', 'eval.py',
+            '--eval-path', self.eval_path,
+            '--model-path', TrainModel().result_path(),
+            '--out-dir', self.out_dir,
+        ]
+
+    def output(self):
+        out_dir = Path(self.out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return luigi.LocalTarget(
+            path=str(out_dir / '.SUCCESS')
+        )

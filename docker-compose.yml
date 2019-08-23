@@ -2,7 +2,8 @@ version: '2'
 services:
 
   dask-worker:
-    image: drtools/dask:latest
+    build:
+      context: ./dask
     command: dask-worker dask-scheduler:8786
     volumes:
       - ./data_root:/usr/share/data/
@@ -10,7 +11,8 @@ services:
       - dask-scheduler
 
   dask-scheduler:
-    image: drtools/dask:latest
+    build:
+      context: ./dask
     command: dask-scheduler
     volumes:
       - ./data_root:/usr/share/data/
@@ -39,4 +41,4 @@ services:
       - ./orchestrator:/opt/orchestrator # Mount code for faster development
     build:
       context: ./orchestrator
-    command: luigi --module task MakeDatasets --scheduler-host luigid
+    command: luigi --module task EvaluateModel --scheduler-host luigid

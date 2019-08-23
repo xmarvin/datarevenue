@@ -103,7 +103,13 @@ This will download the data for you. It might be a good idea to execute:
 in a different terminal window to get a sense of what is going on.
 
 Testing module without orchestrator
-`docker run -it -v "$(pwd)"/data_root:/usr/share/data --network=datarevenue_default code-challenge/make-dataset:0.1 python dataset.py`
+`
+docker run -it -v "$(pwd)"/data_root:/usr/share/data --network=datarevenue_default code-challenge/make-dataset:0.1 python dataset.py
+`
+or
+`
+docker run -it -v "$(pwd)"/data_root:/usr/share/data --network=datarevenue_default code-challenge/train_model:0.1 /bin/bash
+`
 
 We recommend to start developing in notebooks or you IDE locally if you're not very familiar with docker. This way we can consider you're solution even if you don't get the whole pipeline running. Also don't hesitate to contact us if you hit a serious blocker instead of wasting too much time on it.
 

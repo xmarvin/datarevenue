@@ -356,8 +356,6 @@ class ContainerTask(luigi.Task):
     def _run_and_track_task(self):
         self._retry_count = self._client.get_retry_count(self.name)
         self._set_name()
-        print(CONTAINER_TASK_NET)
-        print(self.configuration)
         self._container = self._client.run_container(
             self.image,
             self.u_name,
