@@ -1,5 +1,6 @@
 import click
 import numpy as np
+import pandas as pd
 import dask.dataframe as dd
 from distributed import Client
 from pathlib import Path
@@ -25,6 +26,11 @@ def _save_datasets(all_data, outdir: Path):
     flag = outdir / '.SUCCESS'
     flag.touch()
 
+def filter_dataset(df):
+    df = df.drop_duplicates('description')
+    df = df[pd.notnull(df['price'])]
+    return df
+
 def make_features(df):
     stemmer = SnowballStemmer('english')
     tokenizer = RegexpTokenizer(r'[a-zA-Z\']+')
@@ -32,20 +38,12 @@ def make_features(df):
     def tokenize(text):
         return [stemmer.stem(word) for word in tokenizer.tokenize(text.lower()) if word not in stop_words]
 
-    df['country'] = df['country'].fillna('unk')
-    df['price'] = df['price'].fillna(df['price'].mean().compute())
-
-    df['country'] = df['country'].astype('category')
-    df = df.categorize(columns=['country'])
-    df = df.compute()
-
-    vectorizer = TfidfVectorizer(tokenizer = tokenize, max_features = 1000)
+    vectorizer = TfidfVectorizer(tokenizer = tokenize, max_features = 1000, ngram_range=(1,1))
     descriptions = df['description'].values
     vectorizer.fit(descriptions)
     description_encodings = vectorizer.transform(descriptions)
-    country_encodings = csr_matrix(dd.get_dummies(df['country'], prefix='country'))
     other_columns = csr_matrix(df[['price']])
-    all_data = hstack((description_encodings, country_encodings, other_columns))
+    all_data = hstack((description_encodings, other_columns))
     return all_data
 
 def make_groups(df):
@@ -56,10 +54,10 @@ def make_groups(df):
                 return index
         return len(splits)
 
-    return df['points'].apply(points2group, meta=('points','int')).values.compute()
+    return df['points'].apply(points2group).values
 
 @click.command()
-@click.option('--in-csv', default='/usr/share/data/raw/wine_dataset')
+@click.option('--in-csv', default='/usr/share/data/raw/wine_dataset.csv')
 @click.option('--out-dir', default = '/usr/share/data/make_dateset/')
 @click.option('--train-ratio', default=0.8, type=float)
 def make_datasets(in_csv, out_dir, train_ratio):
@@ -75,11 +73,12 @@ def make_datasets(in_csv, out_dir, train_ratio):
     ddf = dd.read_csv(in_csv, blocksize=1e6)
     # we set the index so we can properly execute loc below
     ddf = ddf.set_index('Unnamed: 0')
-    groups = make_groups(ddf)
-    data = make_features(ddf)
+    df = ddf.compute()
+    df = filter_dataset(df)
+    data = make_features(df)
+    groups = make_groups(df)
     all_data = train_test_split(data, groups, test_size=test_ratio,random_state=0)
     _save_datasets(all_data, out_dir)
-
 
 if __name__ == '__main__':
     make_datasets()

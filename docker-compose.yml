@@ -41,4 +41,4 @@ services:
       - ./orchestrator:/opt/orchestrator # Mount code for faster development
     build:
       context: ./orchestrator
-    command: luigi --module task EvaluateModel --scheduler-host luigid
+    command: luigi --module task Report --scheduler-host luigid
