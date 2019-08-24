@@ -1,6 +1,10 @@
 FROM drtools/dask:latest
-COPY . /opt/make_dataset
+
+ADD requirements.txt /opt/make_dataset/
+WORKDIR /opt/make_dataset
+
+RUN pip install -r /opt/make_dataset/requirements.txt
 
 USER root
 
-WORKDIR /opt/make_dataset
+ADD . /opt/make_dataset

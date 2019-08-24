@@ -82,7 +82,7 @@ class MakeDatasets(DockerTask):
         )
 
 class TrainModel(DockerTask):
-    train_path = luigi.Parameter(default='/usr/share/data/make_dataset/train.parquet')
+    train_path = luigi.Parameter(default='/usr/share/data/make_dataset/train')
     out_dir = luigi.Parameter(default='/usr/share/data/train_model/')
 
     @property
@@ -111,7 +111,7 @@ class TrainModel(DockerTask):
         )
 
 class EvaluateModel(DockerTask):
-    eval_path = luigi.Parameter(default='/usr/share/data/make_dataset/test.parquet')
+    eval_path = luigi.Parameter(default='/usr/share/data/make_dataset/test')
     out_dir = luigi.Parameter(default='/usr/share/data/eval_model/')
 
     @property

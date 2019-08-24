@@ -2,3 +2,4 @@ dask==1.1.5
 dask-glm==0.2.0
 dask-ml==1.0.0
 dask-xgboost==0.1.7
+sparse==0.7.0

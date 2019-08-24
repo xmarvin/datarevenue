@@ -3,28 +3,50 @@ import numpy as np
 import dask.dataframe as dd
 from distributed import Client
 from pathlib import Path
-from scipy import sparse
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+import scipy
+from scipy.sparse import csr_matrix, hstack
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction import text
+from nltk.tokenize import RegexpTokenizer
+from nltk.stem.snowball import SnowballStemmer
 
-def _save_dataset(df, name, outdir: Path):
-    out_path = outdir / name
-    df.to_parquet(str(out_path))
+def _save_dataset(x, y, name, outdir: Path):
+    scipy.sparse.save_npz(str(outdir / (name + '_x')), x)
+    np.save(outdir / (name+'_y'), y)
 
-def _save_datasets(train, test, outdir: Path):
+def _save_datasets(all_data, outdir: Path):
     """Save data sets into nice directory structure and write SUCCESS flag."""
 
-    _save_dataset(train, 'train.parquet/', outdir)
-    _save_dataset(test, 'test.parquet/', outdir)
+    x_train, x_test, y_train, y_test = all_data
+    _save_dataset(x_train, y_train,'train', outdir)
+    _save_dataset(x_test, y_test, 'test', outdir)
 
     flag = outdir / '.SUCCESS'
     flag.touch()
 
 def make_features(df):
-    df['description_len'] = df['description'].apply(len)
-    #useful_columns = ['price', 'country', 'description', 'description_len', 'group']
-    useful_columns = ['price', 'country', 'description_len', 'group']
-    df = df[useful_columns]
-    df['price'] = df['price'].fillna(0)
-    return df
+    stemmer = SnowballStemmer('english')
+    tokenizer = RegexpTokenizer(r'[a-zA-Z\']+')
+    stop_words = text.ENGLISH_STOP_WORDS
+    def tokenize(text):
+        return [stemmer.stem(word) for word in tokenizer.tokenize(text.lower()) if word not in stop_words]
+
+    df['country'] = df['country'].fillna('unk')
+    df['price'] = df['price'].fillna(df['price'].mean().compute())
+
+    df['country'] = df['country'].astype('category')
+    df = df.categorize(columns=['country'])
+    df = df.compute()
+
+    vectorizer = TfidfVectorizer(tokenizer = tokenize, max_features = 1000)
+    descriptions = df['description'].values
+    vectorizer.fit(descriptions)
+    description_encodings = vectorizer.transform(descriptions)
+    country_encodings = csr_matrix(dd.get_dummies(df['country'], prefix='country'))
+    other_columns = csr_matrix(df[['price']])
+    all_data = hstack((description_encodings, country_encodings, other_columns))
+    return all_data
 
 def make_groups(df):
     def points2group(score):
@@ -34,12 +56,11 @@ def make_groups(df):
                 return index
         return len(splits)
 
-    df['group'] = df['points'].apply(points2group)
-    return df
+    return df['points'].apply(points2group, meta=('points','int')).values.compute()
 
 @click.command()
-@click.option('--in-csv')
-@click.option('--out-dir')
+@click.option('--in-csv', default='/usr/share/data/raw/wine_dataset')
+@click.option('--out-dir', default = '/usr/share/data/make_dateset/')
 @click.option('--train-ratio', default=0.8, type=float)
 def make_datasets(in_csv, out_dir, train_ratio):
     test_ratio = 1 - train_ratio
@@ -54,11 +75,10 @@ def make_datasets(in_csv, out_dir, train_ratio):
     ddf = dd.read_csv(in_csv, blocksize=1e6)
     # we set the index so we can properly execute loc below
     ddf = ddf.set_index('Unnamed: 0')
-    ddf = make_groups(ddf)
-    ddf = make_features(ddf)
-    train, test = ddf.random_split([train_ratio, test_ratio], random_state=0)
-
-    _save_datasets(train, test, out_dir)
+    groups = make_groups(ddf)
+    data = make_features(ddf)
+    all_data = train_test_split(data, groups, test_size=test_ratio,random_state=0)
+    _save_datasets(all_data, out_dir)
 
 
 if __name__ == '__main__':

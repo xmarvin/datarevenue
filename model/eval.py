@@ -29,7 +29,7 @@ def save_output(pred_y, y, out_dir: Path):
     flag.touch()
 
 @click.command()
-@click.option('--eval-path', default='/usr/share/data/make_dataset/test.parquet')
+@click.option('--eval-path', default='/usr/share/data/make_dataset/test')
 @click.option('--model-path', default='/usr/share/data/train_model/xgb.model')
 @click.option('--out-dir', default='/usr/share/data/eval_model/')
 def eval(eval_path, model_path, out_dir):
@@ -37,8 +37,7 @@ def eval(eval_path, model_path, out_dir):
   out_dir.mkdir(parents=True, exist_ok=True)
 
   client = Client('dask-scheduler:8786')
-  df = dd.read_parquet(eval_path)
-  x, y = utils.preprocess(df)
+  x,y = utils.load_data(eval_path)
   bst = xgboost.Booster()
   bst.load_model(model_path)
   pred_y =  dask_xgboost.predict(client, bst, x)
