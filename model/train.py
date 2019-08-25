@@ -1,8 +1,6 @@
 import click
-import dask.dataframe as dd
 import numpy as np
 from pathlib import Path
-import dask_xgboost
 import matplotlib.pyplot as plt
 import utils
 from sklearn.linear_model import LogisticRegression
